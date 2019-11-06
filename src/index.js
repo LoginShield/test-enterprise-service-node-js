@@ -15,7 +15,16 @@ const {
     } = process.env;
 
 // validate configuration settings
-assert(PORT, 'process.env.PORT required');
+let isConfError = false;
+['PORT'].forEach((item) => {
+  if(!process.env[item]) {
+    console.error(`environment variable is required: ${item}`);
+    isConfError = true;
+  }
+});
+if(isConfError) {
+  process.exit(1);
+}
 
 // in-memory database
 const database = new Database();

@@ -23,37 +23,51 @@ npm link @loginshield/gateway-core
 
 ## Environment variables
 
-ENDPOINT_URL
-: used to generate HTTP redirects
-: an absolute URL, e.g. `https://example.com/path`
-
 PORT
 : where the service should accept connections
 : an integer, e.g. `7100`
+: required
 
-SECURE_KEY
-: used to encrypt cookie values
-: a comma-separated list of one or more keys
-: each key is 16 bytes, hex-encoded (32 characters)
-: the first key is used to encrypt new cookies
-: subsequent keys used only to decrypt older cookies
+ENDPOINT_URL
+: used to generate HTTP redirects to this service
+: an absolute URL, e.g. `https://example.com/path`
+: required for LoginShield integration, but will not prevent service from starting
+: value must match the "domain" defined for the realm at the authentication service
+  (e.g. `example.com`)
+
+LOGINSHIELD_ENDPOINT_URL
+: used to generate HTTP redirects to this service
+: an absolute URL, e.g. `https://example.com/path`
+: required for LoginShield integration, but will not prevent service from starting
+: value must match the "domain" defined for the realm at the authentication service
+  (e.g. `example.com`)
+
+LOGINSHIELD_REALM_ID
+: issued by authentication service
+: required for LoginShield integration, but will not prevent service from starting
+
+LOGINSHIELD_AUTHORIZATION_TOKEN
+: issued by authentication service
+: required for LoginShield integration, but will not prevent service from starting
 
 Linux:
 
 ```
-export ENDPOINT_URL=http://localhost:7100
 export PORT=7100
-export SECURE_KEY=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+export ENDPOINT_URL=http://localhost:7100
+export LOGINSHIELD_ENDPOINT_URL=https://loginshield.com
+export LOGINSHIELD_REALM_ID=xxxxxxxxxxxxxx
+export LOGINSHIELD_AUTHORIZATION_TOKEN=yyyyyyyyyyyyyyyy
 ```
 
 Windows PowerShell:
 
 ```
-$env:CHALLENGE_ENDPOINT_URL="http://localhost:7504/service/login/challenge"
-$env:PUSH_ENDPOINT_URL="http://localhost:7504/service/login/push"
-$env:SHARE_ENDPOINT_URL="http://localhost:7504/mx/share"
 $env:PORT="7100"
-$env:SECURE_KEY="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+$env:ENDPOINT_URL="http://localhost:7100"
+$env:LOGINSHIELD_ENDPOINT_URL="https://loginshield.com"
+$env:LOGINSHIELD_REALM_ID="xxxxxxxxxxxxxx"
+$env:LOGINSHIELD_AUTHORIZATION_TOKEN="yyyyyyyyyyyyyyyy"
 ```
 
 ## Persistence

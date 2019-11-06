@@ -1,12 +1,13 @@
-const fs = require('fs');
-const { strict: assert } = require('assert');
-const cookie = require('cookie');
-const { Router, json } = require('express');
-const bodyParser = require('body-parser');
+const pkg = require('../package.json');
 const { compact } = require('./input');
 const { randomHex } = require('./random');
-const pkg = require('../package.json');
+const { strict: assert } = require('assert');
+const ajax = require('axios');
+const bodyParser = require('body-parser');
+const cookie = require('cookie');
 const crypto = require('crypto');
+const { Router, json } = require('express');
+const fs = require('fs');
 
 const COOKIE_NAME = 'test';
 
@@ -135,6 +136,79 @@ async function httpPostLogin(req, res) {
   return res.json({isAuthenticated: false});
 }
 
+async function httpPostEditAccount(req, res) {
+  const { database } = req.app.locals;
+  console.log('edit account request: %o', req.body);
+  if(!req.session.isAuthenticated || !req.session.userId) {
+    return res.json({error: 'unauthorized'});
+  }
+  const user = await database.collection("user").fetchById(req.session.userId);
+  console.log('user: %o', user);
+  const { action } = req.body;
+  if(action === 'register-loginshield-user') {
+    return enableLoginShieldForAccount(req, res);
+  }
+  return res.json({result: true});
+}
+
+async function enableLoginShieldForAccount(req, res) {
+  const { database } = req.app.locals;
+  if(!req.session.isAuthenticated || !req.session.userId) {
+    return res.json({error: 'unauthorized'});
+  }
+  // check that integration with authentication service is configured
+  let isConfError = false;
+  ['ENDPOINT_URL', 'LOGINSHIELD_ENDPOINT_URL', 'LOGINSHIELD_REALM_ID', 'LOGINSHIELD_AUTHORIZATION_TOKEN'].forEach((item) => {
+    if(!process.env[item]) {
+      console.error(`environment variable is required: ${item}`);
+      isConfError = true;
+    }
+  });
+  if(isConfError) {
+    return res.json({error: 'server-error'});
+  }  
+  const { ENDPOINT_URL, LOGINSHIELD_ENDPOINT_URL, LOGINSHIELD_REALM_ID, LOGINSHIELD_AUTHORIZATION_TOKEN } = process.env;
+  console.log('enabling loginshield for account...');
+  try {
+    const request = {
+      realmId: LOGINSHIELD_REALM_ID,
+      redirect: `${ENDPOINT_URL}/account/loginshield/continue-registration`,
+    };
+    console.log('registration request: %o', request);
+    const headers = {
+      'Authorization': `Token ${LOGINSHIELD_AUTHORIZATION_TOKEN}`,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+  };
+    const response = await ajax.post(
+      `${LOGINSHIELD_ENDPOINT_URL}/service/realm/user/create`,
+      JSON.stringify(request),
+      {
+        headers,
+      });
+      console.log('loginshield response status: %o', response.status);
+      console.log('loginshield response status text: %o', response.statusText);
+      console.log('loginshield response headers: %o', response.headers);
+      console.log('loginshield response data: %o', response.data);
+      if(response.data && response.data.userId && response.data.forward && response.data.forward.startsWith(LOGINSHIELD_ENDPOINT_URL)) {
+        // store the realm-scoped-user-id
+        const loginshield = {
+          isEnabled: false,
+          userId: response.data.userId,
+          };
+        await database.collection("user").editById(req.session.userId, { loginshield });
+        // redirect user to loginshield for registration
+        return res.json({forward: response.data.forward});
+      }
+      return res.json({error: 'unexpected reply from registration'});
+    }
+  catch(err) {
+    console.log('registration error', err);
+    return res.json({error: 'registration failed'});
+  }
+
+}
+
 function routes(app) {
   const routes = new Router();
   routes.use(setNoCache);
@@ -151,6 +225,7 @@ function routes(app) {
  // account management
  routes.get('/account', httpGetAccount);
  routes.post('/account/register', httpPostRegister);
+ routes.post('/account/edit', httpPostEditAccount);
 
   routes.use((err, req, res, next) => {
       if( err ) {
