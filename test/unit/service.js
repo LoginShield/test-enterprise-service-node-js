@@ -2,7 +2,7 @@
 // const ajax = require('axios');
 // const pkg = require('../../package.json');
 
-describe('website', function(){
+describe('website', () => {
     /*
     it('front-page', async function(){
         this.timeout(5000);
@@ -12,4 +12,4 @@ describe('website', function(){
         expect(response.data.version).to.equal(pkg.version);
     })
     */
-})
+});
