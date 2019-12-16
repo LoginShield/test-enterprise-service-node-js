@@ -1,208 +1,13 @@
 const { randomHex } = require('@cryptiumtech/random-util');
 // const { strict: assert } = require('assert');
-const ajax = require('axios');
 const bodyParser = require('body-parser');
 const cookie = require('cookie');
 const crypto = require('crypto');
 const { Router /* , json */ } = require('express');
-// const fs = require('fs');
-// const { compact } = require('./input');
+const { loginshieldCreateUser, loginshieldStartLogin, loginshieldFinishLogin } = require('./loginshield');
 const pkg = require('../package.json');
 
 const COOKIE_NAME = 'test';
-
-
-// TODO: move to enterprise service SDK
-function loginshieldConfiguration() {
-    let isConfError = false;
-    ['ENDPOINT_URL', 'LOGINSHIELD_ENDPOINT_URL', 'LOGINSHIELD_REALM_ID', 'LOGINSHIELD_AUTHORIZATION_TOKEN'].forEach((item) => {
-        if (!process.env[item]) {
-            console.error(`environment variable is required: ${item}`);
-            isConfError = true;
-        }
-    });
-    if (isConfError) {
-        throw new Error('configuration-not-found');
-    }
-    const {
-        ENDPOINT_URL, LOGINSHIELD_ENDPOINT_URL, LOGINSHIELD_REALM_ID, LOGINSHIELD_AUTHORIZATION_TOKEN,
-    } = process.env;
-    return {
-        ENDPOINT_URL, LOGINSHIELD_ENDPOINT_URL, LOGINSHIELD_REALM_ID, LOGINSHIELD_AUTHORIZATION_TOKEN,
-    };
-}
-// TODO: move to enterprise service SDK
-async function loginshieldCreateUser() {
-    try {
-        const {
-            ENDPOINT_URL, LOGINSHIELD_ENDPOINT_URL, LOGINSHIELD_REALM_ID, LOGINSHIELD_AUTHORIZATION_TOKEN,
-        } = loginshieldConfiguration();
-        const request = {
-            realmId: LOGINSHIELD_REALM_ID,
-            redirect: `${ENDPOINT_URL}/account/loginshield/continue-registration`,
-        };
-        console.log('registration request: %o', request);
-        const headers = {
-            Authorization: `Token ${LOGINSHIELD_AUTHORIZATION_TOKEN}`,
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-        };
-        const response = await ajax.post(
-            `${LOGINSHIELD_ENDPOINT_URL}/service/realm/user/create`,
-            JSON.stringify(request),
-            {
-                headers,
-            },
-        );
-        console.log('loginshield response status: %o', response.status);
-        console.log('loginshield response status text: %o', response.statusText);
-        console.log('loginshield response headers: %o', response.headers);
-        console.log('loginshield response data: %o', response.data);
-        if (response.data && response.data.userId && response.data.forward && response.data.forward.startsWith(LOGINSHIELD_ENDPOINT_URL)) {
-            return response.data; // { userId, forward }
-        }
-        return { error: 'unexpected-response', response };
-    } catch (err) {
-        console.log('registration error', err);
-        return { error: 'registration-failed', err };
-    }
-}
-
-/*
-// TODO: move to enterprise service SDK
-// NOTE: this is first draft of the enterprise login where we get the challenge and give it to client
-async function loginshieldCreateLoginChallenge(realmScopedUserId) {
-    try {
-        const {
-            ENDPOINT_URL, LOGINSHIELD_ENDPOINT_URL, LOGINSHIELD_REALM_ID, LOGINSHIELD_AUTHORIZATION_TOKEN,
-        } = loginshieldConfiguration();
-        const request = {
-            realmId: LOGINSHIELD_REALM_ID,
-            userId: realmScopedUserId,
-            redirect: `${ENDPOINT_URL}/account/loginshield/continue-login`,
-        };
-        console.log('login challenge request: %o', request);
-        const headers = {
-            Authorization: `Token ${LOGINSHIELD_AUTHORIZATION_TOKEN}`,
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-        };
-        const response = await ajax.post(
-            `${LOGINSHIELD_ENDPOINT_URL}/service/realm/login/challenge`,
-            JSON.stringify(request),
-            {
-                headers,
-            },
-        );
-        console.log('loginshield response status: %o', response.status);
-        console.log('loginshield response status text: %o', response.statusText);
-        console.log('loginshield response headers: %o', response.headers);
-        console.log('loginshield response data: %o', response.data);
-        if (response.data && response.data.challenge) {
-            return response.data; // { challenge (base64 string) }
-        }
-        return { error: 'unexpected-response', response };
-    } catch (err) {
-        console.log('login challenge error', err);
-        return { error: 'login-failed', err };
-    }
-}
-*/
-
-// TODO: move to enterprise service SDK
-// NOTE: this is second draft of the enterprise login where we get a url and redirect user
-async function loginshieldStartLogin({ realmScopedUserId, isNewKey = false }) {
-    try {
-        const {
-            ENDPOINT_URL, LOGINSHIELD_ENDPOINT_URL, LOGINSHIELD_REALM_ID, LOGINSHIELD_AUTHORIZATION_TOKEN,
-        } = loginshieldConfiguration();
-        const request = {
-            realmId: LOGINSHIELD_REALM_ID,
-            userId: realmScopedUserId,
-            isNewKey,
-            redirect: `${ENDPOINT_URL}/login?mode=resume-loginshield`, // draft 2, this url only used for safety reset; when called, a 'loginshield' parameter will be added by loginshield
-        };
-        console.log('login start request: %o', request);
-        const headers = {
-            Authorization: `Token ${LOGINSHIELD_AUTHORIZATION_TOKEN}`,
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-        };
-        const response = await ajax.post(
-            `${LOGINSHIELD_ENDPOINT_URL}/service/realm/login/start`,
-            JSON.stringify(request),
-            {
-                headers,
-            },
-        );
-        console.log('loginshield response status: %o', response.status);
-        console.log('loginshield response status text: %o', response.statusText);
-        console.log('loginshield response headers: %o', response.headers);
-        console.log('loginshield response data: %o', response.data);
-        if (response.data && response.data.forward && response.data.forward.startsWith(LOGINSHIELD_ENDPOINT_URL)) {
-            return response.data; // { forward (url string) }
-        }
-        return { error: 'unexpected-response', response };
-    } catch (err) {
-        console.log('login start error', err);
-        return { error: 'login-failed', err };
-    }
-}
-
-// TODO: move to enterprise service SDK
-// NOTE: this is second draft of the enterprise login where we get a url and redirect user, later (here) we get a token, validate it with loginshield service, and login the user
-async function loginshieldFinishLogin(token) {
-    try {
-        const {
-            LOGINSHIELD_ENDPOINT_URL, LOGINSHIELD_AUTHORIZATION_TOKEN,
-        } = loginshieldConfiguration();
-        const request = {
-            token,
-        };
-        console.log('login finish request: %o', request);
-        const headers = {
-            Authorization: `Token ${LOGINSHIELD_AUTHORIZATION_TOKEN}`,
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-        };
-        const response = await ajax.post(
-            `${LOGINSHIELD_ENDPOINT_URL}/service/realm/login/report`,
-            JSON.stringify(request),
-            {
-                headers,
-            },
-        );
-        console.log('loginshield login report response status: %o', response.status);
-        console.log('loginshield login report response status text: %o', response.statusText);
-        console.log('loginshield login report response headers: %o', response.headers);
-        console.log('loginshield login report response data: %o', response.data);
-        if (response.data) {
-            return response.data;
-        }
-        return { error: 'unexpected-response', response };
-    } catch (err) {
-        const { config, response } = err;
-        if (config) { // this is also in response.config
-            const {
-                url, method, data, headers,
-            } = config;
-            const headersJson = JSON.stringify(headers);
-            const dataJSON = JSON.stringify(data);
-            console.log(`login finish error: request method ${method} url ${url} data ${dataJSON} headers ${headersJson}`);
-        }
-        if (response) {
-            const {
-                status, statusText, headers, data,
-            } = response;
-            const headersJson = JSON.stringify(headers);
-            const dataJSON = JSON.stringify(data);
-            console.log(`login finish error: response ${status} ${statusText} data ${dataJSON} headers ${headersJson}`);
-        }
-        console.log('login finish error', err);
-        return { error: 'login-failed' };
-    }
-}
-
 
 function setNoCache(req, res, next) {
     res.set('Pragma', 'no-cache');
@@ -212,8 +17,8 @@ function setNoCache(req, res, next) {
 
 async function session(req, res, next) {
     const { database } = req.app.locals;
-    let sessionId;
-    let sessionInfo;
+    let sessionId = null;
+    let sessionInfo = {};
     const cookieHeader = req.get('Cookie');
     if (cookieHeader) {
         const cookieMap = cookie.parse(cookieHeader);
@@ -225,7 +30,7 @@ async function session(req, res, next) {
     if (!sessionId || !sessionInfo || typeof sessionInfo !== 'object') {
         // create a new session
         sessionId = randomHex(16);
-        sessionInfo = {};
+        sessionInfo = { userId: null, notAfter: null };
         await database.collection('session').insert(sessionId, sessionInfo);
     }
     // make session content available to routes
@@ -248,6 +53,10 @@ async function session(req, res, next) {
     next();
 }
 
+function isSessionAuthenticated({ userId, notAfter } = {}) {
+    return userId && typeof notAfter === 'number' && Date.now() <= notAfter;
+}
+
 async function httpGetVersion(req, res) {
     return res.json({ name: pkg.name, version: pkg.version });
 }
@@ -256,22 +65,20 @@ async function httpGetContext(req, res) {
 }
 
 async function httpGetSession(req, res) {
-    const { isAuthenticated, userId } = req.session;
-    if (isAuthenticated && userId) {
-        return res.json({ isAuthenticated: true });
-    }
-    return res.json({ isAuthenticated: false });
+    const isAuthenticated = isSessionAuthenticated(req.session);
+    return res.json({ isAuthenticated });
 }
 
 async function httpPostLogout(req, res) {
-    req.session.isAuthenticated = false;
     req.session.userId = null;
+    req.session.notAfter = null;
     return res.json({ isAuthenticated: false });
 }
 
 async function httpGetAccount(req, res) {
     const { database } = req.app.locals;
-    if (req.session.isAuthenticated && req.session.userId) {
+    const isAuthenticated = isSessionAuthenticated(req.session);
+    if (isAuthenticated) {
         const account = await database.collection('user').fetchById(req.session.userId);
         if (account) {
             const { username, email, loginshield: { isRegistered, isEnabled } } = account;
@@ -303,8 +110,10 @@ async function httpPostCreateAccount(req, res) {
         loginshield: { isRegistered: false, isEnabled: false },
     });
     await database.collection('map_username_to_id').insert(username, { id: userId });
-    req.session.isAuthenticated = true;
+    const seconds = 900; // 60 seconds in 1 minute * 15 minutes
+    const expiresMillis = Date.now() + (seconds * 1000);
     req.session.userId = userId;
+    req.session.notAfter = expiresMillis;
     return res.json({ isCreated: true });
 }
 
@@ -317,8 +126,9 @@ function isAuthenticatedWithPassword(user, password) {
 }
 
 async function httpPostLogin(req, res) {
-    req.session.isAuthenticated = false;
+    // login process starts with a non-authenticated session
     req.session.userId = null;
+    req.session.notAfter = null;
     const { database } = req.app.locals;
     console.log('login request: %o', req.body);
     const { username } = req.body;
@@ -346,8 +156,8 @@ async function httpPostLogin(req, res) {
 }
 
 async function httpPostLoginWithPassword(req, res) {
-    req.session.isAuthenticated = false;
     req.session.userId = null;
+    req.session.notAfter = null;
     const { database } = req.app.locals;
     console.log('httpPostLoginWithPassword request: %o', req.body);
     const { username, password } = req.body;
@@ -368,8 +178,10 @@ async function httpPostLoginWithPassword(req, res) {
             }
             if (user.password && password && isAuthenticatedWithPassword(user, password)) {
                 // loginshield not enabled, and password was submitted
-                req.session.isAuthenticated = true;
+                const seconds = 900; // 60 seconds in 1 minute * 15 minutes
+                const expiresMillis = Date.now() + (seconds * 1000);
                 req.session.userId = userId;
+                req.session.notAfter = expiresMillis;
                 return res.json({ isAuthenticated: true });
             }
         }
@@ -382,6 +194,7 @@ async function httpPostLoginWithPassword(req, res) {
 
 async function httpPostLoginWithLoginShield(req, res) {
     const { database } = req.app.locals;
+    const { ENDPOINT_URL, LOGINSHIELD_REALM_ID } = process.env;
     console.log('httpPostLoginWithLoginShield request: %o', req.body);
     const { username, mode, verifyToken } = req.body;
     // to initiate a login, parameters are username (required), mode (optional)
@@ -395,15 +208,11 @@ async function httpPostLoginWithLoginShield(req, res) {
         // TODO: we could check that the session that started the login for the realmscopeduserid is the same one that
         // started the login, to prevent anyone from stealing a token for a process they didn't start; loginshield already
         // verifies its the same client, but we could also do the same check
-        const {
-            LOGINSHIELD_REALM_ID,
-        } = loginshieldConfiguration();
         if (finishLoginResponse.realmId === LOGINSHIELD_REALM_ID) {
         // we need to lookup the username by realmScopedUserId OR we need to know the original token we sent with the user, so we can lookup the username there, because that's how the whole thing started anyway
-            const result = await database.collection('map_loginshielduserid_to_id').fetchById(finishLoginResponse.realmScopedUserId);
-            if (result && result.id) {
-                const userId = result.id;
-                const user = await database.collection('user').fetchById(userId);
+            const existingUserId = await database.collection('map_loginshielduserid_to_id').fetchById(finishLoginResponse.realmScopedUserId);
+            if (existingUserId) {
+                const user = await database.collection('user').fetchById(existingUserId);
                 if (user) {
                     if (user.loginshield && !user.loginshield.isEnabled) {
                         const loginshield = {
@@ -411,10 +220,12 @@ async function httpPostLoginWithLoginShield(req, res) {
                             isRegistered: true,
                             userId: finishLoginResponse.realmScopedUserId,
                         };
-                        await database.collection('user').editById(userId, { loginshield });
+                        await database.collection('user').editById(existingUserId, { loginshield });
                     }
-                    req.session.isAuthenticated = true;
-                    req.session.userId = userId;
+                    const seconds = 900; // 60 seconds in 1 minute * 15 minutes
+                    const expiresMillis = Date.now() + (seconds * 1000);
+                    req.session.userId = existingUserId;
+                    req.session.notAfter = expiresMillis;
                     return res.json({ isAuthenticated: true });
                 }
             }
@@ -432,14 +243,15 @@ async function httpPostLoginWithLoginShield(req, res) {
         if (user) {
             // respond with required authentication method
             if (user.loginshield.isEnabled && user.loginshield.userId) {
-                const startLoginResponse = await loginshieldStartLogin({ realmScopedUserId: user.loginshield.userId });
+                const startLoginResponse = await loginshieldStartLogin({ realmScopedUserId: user.loginshield.userId, redirect: `${ENDPOINT_URL}/login?mode=resume-loginshield` });
                 console.log('got startLoginResponse: %o', JSON.stringify(startLoginResponse));
                 return res.json({
                     isAuthenticated: false,
                     forward: startLoginResponse.forward,
                 });
             }
-            if (req.session.isAuthenticated && mode === 'activate-loginshield') {
+            const isAuthenticated = isSessionAuthenticated(req.session);
+            if (isAuthenticated && mode === 'activate-loginshield') {
                 // user must already be registered with loginshield and have a realm-scoped-user-id
                 if (!user.loginshield.userId) {
                     console.log('loginshield registration required before login');
@@ -447,7 +259,7 @@ async function httpPostLoginWithLoginShield(req, res) {
                 }
                 // we indicate in the start login request that this login is for completing
                 // the realm user registration process
-                const startLoginResponse = await loginshieldStartLogin({ realmScopedUserId: user.loginshield.userId, isNewKey: true });
+                const startLoginResponse = await loginshieldStartLogin({ realmScopedUserId: user.loginshield.userId, isNewKey: true, redirect: `${ENDPOINT_URL}/login?mode=resume-loginshield` });
                 console.log('got startLoginResponse: %o', JSON.stringify(startLoginResponse));
                 return res.json({
                     isAuthenticated: false,
@@ -459,27 +271,26 @@ async function httpPostLoginWithLoginShield(req, res) {
     // for unknown username, or loginshield not enabled,
     // return the same response to prevent user enumeration
     // for password-protected accounts
-    req.session.isAuthenticated = false;
     req.session.userId = null;
+    req.session.notAfter = null;
     return res.json({ isAuthenticated: false, error: 'password-required' });
 }
 
 async function enableLoginShieldForAccount(req, res) {
     const { database } = req.app.locals;
-    if (!req.session.isAuthenticated || !req.session.userId) {
+    const { ENDPOINT_URL } = process.env;
+    const isAuthenticated = isSessionAuthenticated(req.session);
+    if (!isAuthenticated) {
         return res.json({ error: 'unauthorized' });
     }
     // check if we already have a loginshield userId
     const user = await database.collection('user').fetchById(req.session.userId);
     if (user && user.loginshield && user.loginshield.userId) {
         // user already has a loginshield userId
-        const {
-            ENDPOINT_URL,
-        } = loginshieldConfiguration();
         return res.json({ forward: `${ENDPOINT_URL}/account/loginshield/continue-registration` });
     }
     console.log('enabling loginshield for account...');
-    const response = await loginshieldCreateUser();
+    const response = await loginshieldCreateUser({ redirect: `${ENDPOINT_URL}/account/loginshield/continue-registration` });
     if (response.userId && response.forward) {
         // store the realm-scoped-user-id
         const loginshield = {
@@ -488,7 +299,7 @@ async function enableLoginShieldForAccount(req, res) {
             userId: response.userId,
         };
         await database.collection('user').editById(req.session.userId, { loginshield });
-        await database.collection('map_loginshielduserid_to_id').insert(response.userId, { id: req.session.userId });
+        await database.collection('map_loginshielduserid_to_id').insert(response.userId, req.session.userId);
         // redirect user to loginshield to continue registration
         return res.json({ forward: response.forward });
     }
@@ -499,7 +310,8 @@ async function enableLoginShieldForAccount(req, res) {
 async function httpPostEditAccount(req, res) {
     const { database } = req.app.locals;
     console.log('edit account request: %o', req.body);
-    if (!req.session.isAuthenticated || !req.session.userId) {
+    const isAuthenticated = isSessionAuthenticated(req.session);
+    if (!isAuthenticated) {
         return res.json({ error: 'unauthorized' });
     }
     const user = await database.collection('user').fetchById(req.session.userId);
