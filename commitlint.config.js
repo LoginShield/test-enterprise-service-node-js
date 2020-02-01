@@ -1,1 +1,1 @@
-module.exports = {extends: ['@jbuhacoff/commitlint-config']}
+module.exports = { extends: ['@cryptium/util-commitlint-config'] };

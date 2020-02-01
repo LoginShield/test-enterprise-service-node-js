@@ -1,10 +1,10 @@
-const { randomHex } = require('@cryptiumtech/random-util');
+const { LoginShield } = require('@cryptium/loginshield-realm-client-node');
+const { randomHex } = require('@cryptium/util-random-node');
 // const { strict: assert } = require('assert');
 const bodyParser = require('body-parser');
 const cookie = require('cookie');
 const crypto = require('crypto');
 const { Router /* , json */ } = require('express');
-const { loginshieldCreateUser, loginshieldStartLogin, loginshieldFinishLogin } = require('./loginshield');
 const pkg = require('../package.json');
 
 const COOKIE_NAME = 'test';
@@ -200,17 +200,18 @@ async function httpPostLoginWithLoginShield(req, res) {
     // to initiate a login, parameters are username (required), mode (optional)
     // to complete a login, parameters are token (required)
     if (verifyToken) {
-        const finishLoginResponse = await loginshieldFinishLogin(verifyToken);
-        if (finishLoginResponse.error || finishLoginResponse.fault) {
+        const loginshield = new LoginShield();
+        const verifyLoginResponse = await loginshield.verifyLogin(verifyToken);
+        if (verifyLoginResponse.error || verifyLoginResponse.fault) {
             return { isAuthenticated: false };
         }
         // TODO: the report includes the authorization certificate, we could parse it, extract the challenge, check the realm id in the challenge equals our realm id and equals the realm id mentioned in the report, check the realm scoped user id in the challenge is equal to realm scoped user id mentioned in the report, check that the public key that verifies the authorization certificate matches the public key stored for the user, check dates, nonce, etc.; these are all things that loginshield already verifies and provides the proof so the verification can be repeated here immediately or later in an audit
         // TODO: we could check that the session that started the login for the realmscopeduserid is the same one that
         // started the login, to prevent anyone from stealing a token for a process they didn't start; loginshield already
         // verifies its the same client, but we could also do the same check
-        if (finishLoginResponse.realmId === LOGINSHIELD_REALM_ID) {
+        if (verifyLoginResponse.realmId === LOGINSHIELD_REALM_ID) {
         // we need to lookup the username by realmScopedUserId OR we need to know the original token we sent with the user, so we can lookup the username there, because that's how the whole thing started anyway
-            const existingUserId = await database.collection('map_loginshielduserid_to_id').fetchById(finishLoginResponse.realmScopedUserId);
+            const existingUserId = await database.collection('map_loginshielduserid_to_id').fetchById(verifyLoginResponse.realmScopedUserId);
             if (existingUserId) {
                 const user = await database.collection('user').fetchById(existingUserId);
                 if (user) {
@@ -218,7 +219,7 @@ async function httpPostLoginWithLoginShield(req, res) {
                         const loginshield = {
                             isEnabled: true,
                             isRegistered: true,
-                            userId: finishLoginResponse.realmScopedUserId,
+                            userId: verifyLoginResponse.realmScopedUserId,
                         };
                         await database.collection('user').editById(existingUserId, { loginshield });
                     }
@@ -243,7 +244,8 @@ async function httpPostLoginWithLoginShield(req, res) {
         if (user) {
             // respond with required authentication method
             if (user.loginshield.isEnabled && user.loginshield.userId) {
-                const startLoginResponse = await loginshieldStartLogin({ realmScopedUserId: user.loginshield.userId, redirect: `${ENDPOINT_URL}/login?mode=resume-loginshield` });
+                const loginshield = new LoginShield();
+                const startLoginResponse = await loginshield.startLogin({ realmScopedUserId: user.loginshield.userId, redirect: `${ENDPOINT_URL}/login?mode=resume-loginshield` });
                 console.log('got startLoginResponse: %o', JSON.stringify(startLoginResponse));
                 return res.json({
                     isAuthenticated: false,
@@ -259,7 +261,8 @@ async function httpPostLoginWithLoginShield(req, res) {
                 }
                 // we indicate in the start login request that this login is for completing
                 // the realm user registration process
-                const startLoginResponse = await loginshieldStartLogin({ realmScopedUserId: user.loginshield.userId, isNewKey: true, redirect: `${ENDPOINT_URL}/login?mode=resume-loginshield` });
+                const loginshield = new LoginShield();
+                const startLoginResponse = await loginshield.startLogin({ realmScopedUserId: user.loginshield.userId, isNewKey: true, redirect: `${ENDPOINT_URL}/login?mode=resume-loginshield` });
                 console.log('got startLoginResponse: %o', JSON.stringify(startLoginResponse));
                 return res.json({
                     isAuthenticated: false,
@@ -276,6 +279,8 @@ async function httpPostLoginWithLoginShield(req, res) {
     return res.json({ isAuthenticated: false, error: 'password-required' });
 }
 
+// `realmScopedUserId` example: user.loginshield.userId
+// `redirect` parameter example: `${ENDPOINT_URL}/account/loginshield/continue-registration`  (note the endpoint is enterprise own endpoint url, the path is defined by enterprise)
 async function enableLoginShieldForAccount(req, res) {
     const { database } = req.app.locals;
     const { ENDPOINT_URL } = process.env;
@@ -290,16 +295,19 @@ async function enableLoginShieldForAccount(req, res) {
         return res.json({ forward: `${ENDPOINT_URL}/account/loginshield/continue-registration` });
     }
     console.log('enabling loginshield for account...');
-    const response = await loginshieldCreateUser({ redirect: `${ENDPOINT_URL}/account/loginshield/continue-registration` });
-    if (response.userId && response.forward) {
+    const loginshield = new LoginShield();
+    const realmScopedUserId = randomHex(16); // three options: 1) service username (already unique), 2) hash of service username (need to check for conflict), 3) random (need to check for conflict)
+    const redirect = `${ENDPOINT_URL}/account/loginshield/continue-registration`;
+    const response = await loginshield.createRealmUser({ realmScopedUserId, redirect });
+    if (response.isCreated && response.forward) {
         // store the realm-scoped-user-id
         const loginshield = {
             isEnabled: false,
             isRegistered: false,
-            userId: response.userId,
+            userId: realmScopedUserId, // not needed if we register user with realmScopedUserId = username
         };
         await database.collection('user').editById(req.session.userId, { loginshield });
-        await database.collection('map_loginshielduserid_to_id').insert(response.userId, req.session.userId);
+        await database.collection('map_loginshielduserid_to_id').insert(realmScopedUserId, req.session.userId);
         // redirect user to loginshield to continue registration
         return res.json({ forward: response.forward });
     }
