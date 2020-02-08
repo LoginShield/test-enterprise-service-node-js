@@ -216,12 +216,12 @@ async function httpPostLoginWithLoginShield(req, res) {
                 const user = await database.collection('user').fetchById(existingUserId);
                 if (user) {
                     if (user.loginshield && !user.loginshield.isEnabled) {
-                        const loginshield = {
+                        const loginWithLoginShield = {
                             isEnabled: true,
                             isRegistered: true,
                             userId: verifyLoginResponse.realmScopedUserId,
                         };
-                        await database.collection('user').editById(existingUserId, { loginshield });
+                        await database.collection('user').editById(existingUserId, { loginshield: loginWithLoginShield });
                     }
                     const seconds = 900; // 60 seconds in 1 minute * 15 minutes
                     const expiresMillis = Date.now() + (seconds * 1000);
@@ -297,19 +297,35 @@ async function enableLoginShieldForAccount(req, res) {
     console.log('enabling loginshield for account...');
     const loginshield = new LoginShield();
     const realmScopedUserId = randomHex(16); // three options: 1) service username (already unique), 2) hash of service username (need to check for conflict), 3) random (need to check for conflict)
-    const redirect = `${ENDPOINT_URL}/account/loginshield/continue-registration`;
-    const response = await loginshield.createRealmUser({ realmScopedUserId, redirect });
-    if (response.isCreated && response.forward) {
+
+    let response;
+    if (process.env.REDIRECT_METHOD_ENABLED) {
+        /* start redirect method */
+        const redirect = `${ENDPOINT_URL}/account/loginshield/continue-registration`;
+        response = await loginshield.createRealmUser({ realmScopedUserId, redirect });
+        /* end redirect method */
+    } else {
+        /* immediate method */
+        console.log(`calling createRealmUser with name: ${user.username} and email ${user.email}`);
+        response = await loginshield.createRealmUser({ realmScopedUserId, name: user.username, email: user.email });
+    }
+    if (response.isCreated) {
         // store the realm-scoped-user-id
-        const loginshield = {
+        const loginWithLoginShield = {
             isEnabled: false,
-            isRegistered: false,
+            isRegistered: true, // true for immediate method; for the redirect method, set to false here and true later when redirected back to this site
             userId: realmScopedUserId, // not needed if we register user with realmScopedUserId = username
         };
-        await database.collection('user').editById(req.session.userId, { loginshield });
+        await database.collection('user').editById(req.session.userId, { loginshield: loginWithLoginShield });
         await database.collection('map_loginshielduserid_to_id').insert(realmScopedUserId, req.session.userId);
-        // redirect user to loginshield to continue registration
-        return res.json({ forward: response.forward });
+        /* start redirect method */
+        if (response.forward) {
+            // redirect user to loginshield to continue registration
+            return res.json({ forward: response.forward });
+        }
+        /* end redirect method */
+        /* immediate method, UI will proceed directly to first login at /account/loginshield/continue-registration (defined by UI) */
+        return res.json({ isEdited: true });
     }
     return res.json({ error: 'unexpected reply from registration' });
 }
