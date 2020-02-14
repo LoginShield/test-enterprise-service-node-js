@@ -90,10 +90,24 @@ async function httpGetAccount(req, res) {
 
 async function httpPostCreateAccount(req, res) {
     const { database } = req.app.locals;
-    console.log('register request: %o', req.body);
+    console.log('httpPostCreateAccount request: %o', req.body);
     const { username, email, password } = req.body;
+    // validate inputs
+    if(typeof username !== 'string' || username.trim().length === 0) {
+        console.log('httpPostCreateAccount: non-empty username is required');
+        return res.json({ isCreated: false, error: 'username-required' });
+    } 
+    if(typeof email !== 'string' || email.trim().length === 0) {
+        console.log('httpPostCreateAccount: non-empty email is required');
+        return res.json({ isCreated: false, error: 'email-required' });
+    } 
+    if(typeof password !== 'string' || password.trim().length === 0) {
+        console.log('httpPostCreateAccount: non-empty password is required');
+        return res.json({ isCreated: false, error: 'password-required' });
+    } 
     // check if user already exists
-    const result = await database.collection('map_username_to_id').fetchById(username);
+    const lcUsername = username.toLowerCase();
+    const result = await database.collection('map_username_to_id').fetchById(lcUsername);
     if (result && result.id) {
         return res.json({ isCreated: false });
     }
@@ -104,12 +118,12 @@ async function httpPostCreateAccount(req, res) {
     sha256.update(password);
     const hash = sha256.digest('hex');
     await database.collection('user').insert(userId, {
-        username,
+        username: lcUsername,
         email,
         password: { salt, hash },
         loginshield: { isRegistered: false, isEnabled: false },
     });
-    await database.collection('map_username_to_id').insert(username, { id: userId });
+    await database.collection('map_username_to_id').insert(lcUsername, { id: userId });
     const seconds = 900; // 60 seconds in 1 minute * 15 minutes
     const expiresMillis = Date.now() + (seconds * 1000);
     req.session.userId = userId;
@@ -132,10 +146,12 @@ async function httpPostLogin(req, res) {
     const { database } = req.app.locals;
     console.log('login request: %o', req.body);
     const { username } = req.body;
-    if (!username) {
+    if (typeof username !== 'string' || username.trim().length === 0) {
+        console.log('httpPostLogin: non-empty username is required');
         return res.json({ error: 'username-required' });
     }
-    const result = await database.collection('map_username_to_id').fetchById(username);
+    const lcUsername = username.toLowerCase();
+    const result = await database.collection('map_username_to_id').fetchById(lcUsername);
     if (result && result.id) {
         const userId = result.id;
         const user = await database.collection('user').fetchById(userId);
@@ -161,13 +177,16 @@ async function httpPostLoginWithPassword(req, res) {
     const { database } = req.app.locals;
     console.log('httpPostLoginWithPassword request: %o', req.body);
     const { username, password } = req.body;
-    if (!username) {
+    if (typeof username !== 'string' || username.trim().length === 0) {
+        console.log('httpPostLoginWithPassword: non-empty username is required');
         return res.json({ isAuthenticated: false, error: 'username-required' });
     }
-    if (!password) {
+    if (!typeof password !== 'string' || password.trim().length === 0) {
+        console.log('httpPostLoginWithPassword: non-empty password is required');
         return res.json({ isAuthenticated: false, error: 'password-required' });
     }
-    const result = await database.collection('map_username_to_id').fetchById(username);
+    const lcUsername = username.toLowerCase();
+    const result = await database.collection('map_username_to_id').fetchById(lcUsername);
     if (result && result.id) {
         const userId = result.id;
         const user = await database.collection('user').fetchById(userId);
@@ -234,10 +253,12 @@ async function httpPostLoginWithLoginShield(req, res) {
         // token provided but not validated
         return res.json({ isAuthenticated: false });
     }
-    if (!username) {
+    if (typeof username !== 'string' || username.trim().length === 0) {
+        console.log('httpPostLoginWithLoginShield: non-empty username is required');
         return res.json({ isAuthenticated: false, error: 'username-required' });
     }
-    const result = await database.collection('map_username_to_id').fetchById(username);
+    const lcUsername = username.toLowerCase();
+    const result = await database.collection('map_username_to_id').fetchById(lcUsername);
     if (result && result.id) {
         const userId = result.id;
         const user = await database.collection('user').fetchById(userId);
@@ -305,7 +326,7 @@ async function enableLoginShieldForAccount(req, res) {
         response = await loginshield.createRealmUser({ realmScopedUserId, redirect });
         /* end redirect method */
     } else {
-        /* immediate method */
+        /* immediate method (preferred) */
         console.log(`calling createRealmUser with name: ${user.username} and email ${user.email}`);
         response = await loginshield.createRealmUser({ realmScopedUserId, name: user.username, email: user.email });
     }
