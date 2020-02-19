@@ -1,4 +1,4 @@
-const { LoginShield } = require('@cryptium/loginshield-realm-client-node');
+const { RealmClient } = require('@cryptium/tigercomet-realm-client-node');
 const { randomHex } = require('@cryptium/util-random-node');
 // const { strict: assert } = require('assert');
 const bodyParser = require('body-parser');
@@ -100,7 +100,7 @@ async function httpPostCreateAccount(req, res) {
     if(typeof email !== 'string' || email.trim().length === 0) {
         console.log('httpPostCreateAccount: non-empty email is required');
         return res.json({ isCreated: false, error: 'email-required' });
-    } 
+    }
     if(typeof password !== 'string' || password.trim().length === 0) {
         console.log('httpPostCreateAccount: non-empty password is required');
         return res.json({ isCreated: false, error: 'password-required' });
@@ -181,7 +181,7 @@ async function httpPostLoginWithPassword(req, res) {
         console.log('httpPostLoginWithPassword: non-empty username is required');
         return res.json({ isAuthenticated: false, error: 'username-required' });
     }
-    if (!typeof password !== 'string' || password.trim().length === 0) {
+    if (typeof password !== 'string' || password.trim().length === 0) {
         console.log('httpPostLoginWithPassword: non-empty password is required');
         return res.json({ isAuthenticated: false, error: 'password-required' });
     }
@@ -219,7 +219,7 @@ async function httpPostLoginWithLoginShield(req, res) {
     // to initiate a login, parameters are username (required), mode (optional)
     // to complete a login, parameters are token (required)
     if (verifyToken) {
-        const loginshield = new LoginShield();
+        const loginshield = new RealmClient();
         const verifyLoginResponse = await loginshield.verifyLogin(verifyToken);
         if (verifyLoginResponse.error || verifyLoginResponse.fault) {
             return { isAuthenticated: false };
@@ -265,7 +265,7 @@ async function httpPostLoginWithLoginShield(req, res) {
         if (user) {
             // respond with required authentication method
             if (user.loginshield.isEnabled && user.loginshield.userId) {
-                const loginshield = new LoginShield();
+                const loginshield = new RealmClient();
                 const startLoginResponse = await loginshield.startLogin({ realmScopedUserId: user.loginshield.userId, redirect: `${ENDPOINT_URL}/login?mode=resume-loginshield` });
                 console.log('got startLoginResponse: %o', JSON.stringify(startLoginResponse));
                 return res.json({
@@ -282,7 +282,7 @@ async function httpPostLoginWithLoginShield(req, res) {
                 }
                 // we indicate in the start login request that this login is for completing
                 // the realm user registration process
-                const loginshield = new LoginShield();
+                const loginshield = new RealmClient();
                 const startLoginResponse = await loginshield.startLogin({ realmScopedUserId: user.loginshield.userId, isNewKey: true, redirect: `${ENDPOINT_URL}/login?mode=resume-loginshield` });
                 console.log('got startLoginResponse: %o', JSON.stringify(startLoginResponse));
                 return res.json({
@@ -316,7 +316,7 @@ async function enableLoginShieldForAccount(req, res) {
         return res.json({ forward: `${ENDPOINT_URL}/account/loginshield/continue-registration` });
     }
     console.log('enabling loginshield for account...');
-    const loginshield = new LoginShield();
+    const loginshield = new RealmClient();
     const realmScopedUserId = randomHex(16); // three options: 1) service username (already unique), 2) hash of service username (need to check for conflict), 3) random (need to check for conflict)
 
     let response;
