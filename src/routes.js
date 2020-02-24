@@ -81,8 +81,8 @@ async function httpGetAccount(req, res) {
     if (isAuthenticated) {
         const account = await database.collection('user').fetchById(req.session.userId);
         if (account) {
-            const { username, email, loginshield: { isRegistered, isEnabled } } = account;
-            return res.json({ username, email, loginshield: { isRegistered, isEnabled } });
+            const { username, email, loginshield: { isRegistered, isConfirmed, isEnabled } } = account;
+            return res.json({ username, email, loginshield: { isRegistered, isConfirmed, isEnabled } });
         }
     }
     return res.json({ error: 'unauthorized' });
@@ -93,18 +93,18 @@ async function httpPostCreateAccount(req, res) {
     console.log('httpPostCreateAccount request: %o', req.body);
     const { username, email, password } = req.body;
     // validate inputs
-    if(typeof username !== 'string' || username.trim().length === 0) {
+    if (typeof username !== 'string' || username.trim().length === 0) {
         console.log('httpPostCreateAccount: non-empty username is required');
         return res.json({ isCreated: false, error: 'username-required' });
-    } 
-    if(typeof email !== 'string' || email.trim().length === 0) {
+    }
+    if (typeof email !== 'string' || email.trim().length === 0) {
         console.log('httpPostCreateAccount: non-empty email is required');
         return res.json({ isCreated: false, error: 'email-required' });
     }
-    if(typeof password !== 'string' || password.trim().length === 0) {
+    if (typeof password !== 'string' || password.trim().length === 0) {
         console.log('httpPostCreateAccount: non-empty password is required');
         return res.json({ isCreated: false, error: 'password-required' });
-    } 
+    }
     // check if user already exists
     const lcUsername = username.toLowerCase();
     const result = await database.collection('map_username_to_id').fetchById(lcUsername);
@@ -121,7 +121,7 @@ async function httpPostCreateAccount(req, res) {
         username: lcUsername,
         email,
         password: { salt, hash },
-        loginshield: { isRegistered: false, isEnabled: false },
+        loginshield: { isRegistered: false, isConfirmed: false, isEnabled: false },
     });
     await database.collection('map_username_to_id').insert(lcUsername, { id: userId });
     const seconds = 900; // 60 seconds in 1 minute * 15 minutes
@@ -238,6 +238,7 @@ async function httpPostLoginWithLoginShield(req, res) {
                         const loginWithLoginShield = {
                             isEnabled: true,
                             isRegistered: true,
+                            isConfirmed: true,
                             userId: verifyLoginResponse.realmScopedUserId,
                         };
                         await database.collection('user').editById(existingUserId, { loginshield: loginWithLoginShield });
@@ -335,6 +336,7 @@ async function enableLoginShieldForAccount(req, res) {
         const loginWithLoginShield = {
             isEnabled: false,
             isRegistered: true, // true for immediate method; for the redirect method, set to false here and true later when redirected back to this site
+            isConfirmed: false,
             userId: realmScopedUserId, // not needed if we register user with realmScopedUserId = username
         };
         await database.collection('user').editById(req.session.userId, { loginshield: loginWithLoginShield });
@@ -366,7 +368,7 @@ async function httpPostEditAccount(req, res) {
         return enableLoginShieldForAccount(req, res);
     }
     const { loginshield } = req.body;
-    if (loginshield && user.loginshield && user.loginshield.isRegistered) {
+    if (loginshield && user.loginshield && user.loginshield.isRegistered && user.loginshield.isConfirmed) {
         const copy = user.loginshield;
         copy.isEnabled = loginshield.isEnabled;
         const isEdited = await database.collection('user').editById(req.session.userId, { loginshield: copy });
