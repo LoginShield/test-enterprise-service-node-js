@@ -287,7 +287,7 @@ async function httpPostLoginWithLoginShield(req, res) {
                 const startLoginResponse = await loginshield.startLogin({ realmScopedUserId: user.loginshield.userId, isNewKey: true, redirect: `${ENDPOINT_URL}/login?mode=resume-loginshield` });
                 console.log('got startLoginResponse: %o', JSON.stringify(startLoginResponse));
                 return res.json({
-                    isAuthenticated: false,
+                    isAuthenticated: true,
                     forward: startLoginResponse.forward,
                 });
             }
