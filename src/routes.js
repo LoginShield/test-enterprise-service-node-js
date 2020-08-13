@@ -1,4 +1,4 @@
-const { RealmClient } = require('@cryptium/tigercomet-realm-client-node');
+const { RealmClient } = require('@loginshield/realm-client-node');
 const { randomHex } = require('@cryptium/util-random-node');
 // const { strict: assert } = require('assert');
 const bodyParser = require('body-parser');
