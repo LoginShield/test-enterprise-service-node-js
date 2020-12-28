@@ -1,29 +1,26 @@
 Enterprise Test Service
 =======================
 
+This service does NOT use a database; all data is stored in memory so
+every time it starts the tests can be repeated.
+
+To run the test service locally, you'll need to:
+
+1. Follow directions in [Developer setup]
+2. Set the [Environment variables]
+3. Follow directions in [Start] for this service
+
 # Developer setup
 
 ```
 npm install
 ```
 
-If you are also working on `gateway-core-js` and `gateway-node-js`:
-
-```
-( cd gateway-core-js && npm link )
-( cd gateway-node-js && npm link )
-```
-
-```
-cd service-gateway-proxy-nodejs
-npm link @loginshield/gateway-core
-```
-
 # Operation
 
 ## Environment variables
 
-PORT
+LISTEN_PORT
 : where the service should accept connections
 : an integer, e.g. `7100`
 : required
@@ -53,8 +50,8 @@ LOGINSHIELD_AUTHORIZATION_TOKEN
 Linux:
 
 ```
-export PORT=7100
-export ENDPOINT_URL=http://localhost:7100
+export LISTEN_PORT=7100
+export ENDPOINT_URL=http://localhost
 export LOGINSHIELD_ENDPOINT_URL=https://loginshield.com
 export LOGINSHIELD_REALM_ID=xxxxxxxxxxxxxx
 export LOGINSHIELD_AUTHORIZATION_TOKEN=yyyyyyyyyyyyyyyy
@@ -63,22 +60,15 @@ export LOGINSHIELD_AUTHORIZATION_TOKEN=yyyyyyyyyyyyyyyy
 Windows PowerShell:
 
 ```
-$env:PORT="7100"
-$env:ENDPOINT_URL="http://localhost:7100"
+$env:LISTEN_PORT="7100"
+$env:ENDPOINT_URL="http://localhost"
 $env:LOGINSHIELD_ENDPOINT_URL="https://loginshield.com"
 $env:LOGINSHIELD_REALM_ID="xxxxxxxxxxxxxx"
 $env:LOGINSHIELD_AUTHORIZATION_TOKEN="yyyyyyyyyyyyyyyy"
 ```
-
-## Persistence
-
-This service does NOT use a database; all data is stored in memory so
-every time it starts the tests can be repeated.
 
 ## Start
 
 ```
 npm start
 ```
-
-
