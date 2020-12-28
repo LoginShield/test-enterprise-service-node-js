@@ -6,9 +6,9 @@ every time it starts the tests can be repeated.
 
 To run the test service locally, you'll need to:
 
-1. Follow directions in [Developer setup]
-2. Set the [Environment variables]
-3. Follow directions in [Start] for this service
+1. Follow directions in [Developer setup](#developer-setup)
+2. Set the [Environment variables](#environment-variables)
+3. Follow directions in [Start](#start) for this service
 
 In `package.json` you'll see this dependency:
 
