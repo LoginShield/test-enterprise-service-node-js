@@ -1,5 +1,5 @@
 {
-  "name": "tigercomet-test-enterprise",
+  "name": "@loginshield/test-enterprise-service-node-js",
   "version": "0.1.0",
   "private": true,
   "description": "Enterprise Test Service",
@@ -8,12 +8,18 @@
     "loginshield"
   ],
   "homepage": "https://loginshield.com",
+  "bugs": {
+    "url": "https://github.com/loginshield/test-enterprise-service-node-js/issues"
+  },
   "repository": {
     "type": "git",
-    "url": "ssh://git@git.cryptium.net/tigercomet/service-test-enterprise-node-js"
+    "url": "git+https://github.com/loginshield/test-enterprise-service-node-js.git"
   },
-  "license": "MIT",
-  "author": "Jonathan Buhacoff <jonathan@cryptium.org>",
+  "license": "BSD-2-Clause",
+  "author": "Cryptium <someone@cryptium.com> (https://cryptium.com)",
+  "contributors": [
+    "Jonathan Buhacoff <jonathan@cryptium.com> (https://github.com/jbuhacoff)"
+  ],
   "main": "src/index.js",
   "type": "module",
   "files": [
