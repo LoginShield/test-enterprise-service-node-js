@@ -22,7 +22,7 @@ npm install
 
 LISTEN_PORT
 : where the service should accept connections
-: an integer, e.g. `7100`
+: an integer, e.g. `7101`
 : required
 
 ENDPOINT_URL
@@ -50,7 +50,7 @@ LOGINSHIELD_AUTHORIZATION_TOKEN
 Linux:
 
 ```
-export LISTEN_PORT=7100
+export LISTEN_PORT=7101
 export ENDPOINT_URL=http://localhost
 export LOGINSHIELD_ENDPOINT_URL=https://loginshield.com
 export LOGINSHIELD_REALM_ID=xxxxxxxxxxxxxx
@@ -60,7 +60,7 @@ export LOGINSHIELD_AUTHORIZATION_TOKEN=yyyyyyyyyyyyyyyy
 Windows PowerShell:
 
 ```
-$env:LISTEN_PORT="7100"
+$env:LISTEN_PORT="7101"
 $env:ENDPOINT_URL="http://localhost"
 $env:LOGINSHIELD_ENDPOINT_URL="https://loginshield.com"
 $env:LOGINSHIELD_REALM_ID="xxxxxxxxxxxxxx"
