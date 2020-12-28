@@ -11,12 +11,12 @@ const { routes } = require('./routes');
 const { Database } = require('./database');
 
 const {
-    PORT,
+  LISTEN_PORT,
     } = process.env;
 
 // validate configuration settings
 let isConfError = false;
-['PORT'].forEach((item) => {
+['LISTEN_PORT'].forEach((item) => {
   if(!process.env[item]) {
     console.error(`environment variable is required: ${item}`);
     isConfError = true;
@@ -47,9 +47,9 @@ expressApp.locals = {
 routes(expressApp);
 
 // express listen
-const server = expressApp.listen(PORT);
+const server = expressApp.listen(LISTEN_PORT);
 
-console.log('http service started on port %s', PORT);
+console.log('http service started on port %s', LISTEN_PORT);
 
 ['SIGINT', 'SIGTERM', 'SIGQUIT']
   .forEach(signal => process.on(signal, async () => {

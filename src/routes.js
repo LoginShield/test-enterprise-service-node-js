@@ -327,9 +327,19 @@ async function enableLoginShieldForAccount(req, res) {
         response = await loginshield.createRealmUser({ realmScopedUserId, redirect });
         /* end redirect method */
     } else {
-        /* immediate method (preferred) */
+        /* immediate method (preferred); replace the account if it's already created because this is a demo */
         console.log(`calling createRealmUser with name: ${user.username} and email ${user.email}`);
-        response = await loginshield.createRealmUser({ realmScopedUserId, name: user.username, email: user.email });
+        try {
+            response = await loginshield.createRealmUser({ realmScopedUserId, name: user.username, email: user.email, replace: true });
+            console.log(`response from loginshield: ${JSON.stringify(response)}`);
+            if (response.error) {
+                console.error('failed to register new user', response.error);
+                return res.json({ isEdited: false, error: 'registration failed' });
+            }
+        } catch (err) {
+            console.error('failed to register new user', err);
+            return res.json({ isEdited: false, error: 'registration failed' });
+        }
     }
     if (response.isCreated) {
         // store the realm-scoped-user-id
@@ -405,7 +415,7 @@ function installroutes(app) {
         return next(err);
     });
 
-    app.use('/', routes);
+    app.use('/service', routes);
 }
 
 module.exports = { routes: installroutes };
