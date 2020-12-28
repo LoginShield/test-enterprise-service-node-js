@@ -1,5 +1,5 @@
-Enterprise Test Service
-=======================
+test-enterprise-service-node-js
+===============================
 
 This service does NOT use a database; all data is stored in memory so
 every time it starts the tests can be repeated.
@@ -9,6 +9,16 @@ To run the test service locally, you'll need to:
 1. Follow directions in [Developer setup]
 2. Set the [Environment variables]
 3. Follow directions in [Start] for this service
+
+In `package.json` you'll see this dependency:
+
+```
+    "@loginshield/realm-client-node": "^1.0.0",
+```
+
+The `@loginshield/realm-client-node` is part of the LoginShield Enterprise SDK,
+and you can see how it is used `src/routes.js`.
+
 
 # Developer setup
 
