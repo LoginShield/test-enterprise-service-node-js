@@ -1,5 +1,5 @@
 const { RealmClient } = require('@loginshield/realm-client-node');
-const { randomHex } = require('@cryptium/util-random-node');
+const { randomHex } = require('@cryptium/random-node-js');
 // const { strict: assert } = require('assert');
 const bodyParser = require('body-parser');
 const cookie = require('cookie');

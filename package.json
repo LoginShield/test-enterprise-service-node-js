@@ -33,7 +33,7 @@
     "start": "node src/index.js"
   },
   "dependencies": {
-    "@cryptium/util-random-node": "^0.2.1",
+    "@cryptium/random-node-js": "^0.3.0",
     "@loginshield/realm-client-node": "^1.0.0",
     "axios": "^0.21.0",
     "body-parser": "^1.19.0",
