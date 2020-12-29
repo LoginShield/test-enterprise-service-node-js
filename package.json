@@ -21,7 +21,6 @@
     "Jonathan Buhacoff <jonathan@cryptium.com> (https://github.com/jbuhacoff)"
   ],
   "main": "src/index.js",
-  "type": "module",
   "files": [
     "src"
   ],
