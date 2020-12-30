@@ -1,8 +1,9 @@
 test-enterprise-service-node-js
 ===============================
 
-This service does NOT use a database; all data is stored in memory so
-every time it starts the tests can be repeated.
+This service stores all its data in memory, so every time you start
+or restart the service, you have to start over with creating a new
+account.
 
 To run the test service locally, you'll need to:
 
