@@ -29,6 +29,21 @@ npm install
 
 # Operation
 
+There are two modes of operation for this test website:
+
+1. Pre-configured Realm ID and Authorization Token, useful for testing realm logins
+2. Auto-configured Realm ID and Authorization Token, useful for testing Webauthz and then realm logins
+
+To start the server with pre-configured Realm ID and Authorization Token, define
+the `LOGINSHIELD_REALM_ID` and `LOGINSHIELD_AUTHORIZATION_TOKEN` environment variables
+before starting the server.
+
+To start the server for testing the auto-configuration method, clear or unset
+the `LOGINSHIELD_REALM_ID` and `LOGINSHIELD_AUTHORIZATION_TOKEN` environment variables
+before starting the server.
+
+The "Administrator Setup" steps would normally require an authenicated administrator in production.
+
 ## Environment variables
 
 LISTEN_PORT
