@@ -3,11 +3,10 @@ const { Webauthz } = require('@webauthz/sdk-app-core-node-js');
 const { RealmClient } = require('@loginshield/realm-client-node');
 const { Log } = require('@libertyio/log-node-js');
 const { randomHex } = require('@cryptium/random-node-js');
-// const { strict: assert } = require('assert');
 const bodyParser = require('body-parser');
 const cookie = require('cookie');
 const crypto = require('crypto');
-const { Router /* , json */ } = require('express');
+const { Router } = require('express');
 const pkg = require('../package.json');
 
 const COOKIE_NAME = 'test';
@@ -185,30 +184,17 @@ async function httpPostAdminLoginShieldWebauthzGrant(req, res) {
 
         if (typeof grant_token === 'string') {
             console.log(`httpPostAdminLoginShieldWebauthzGrant access request granted`);
-            // load the access request identified by client_state
-            // const { resource_uri } = await webauthzPlugin.getAccessRequest(client_state, '#admin');
 
-            // if (!resource_uri) {
-            //     res.status(403);
-            //     return res.json({ error: 'access denied' });
-            // }
-            
             try {
                 // exchange the grant token for an access token
                 const { status: exchange_status } = await webauthzPlugin.exchange({ client_id, client_state, grant_token, user_id: '#admin' });
                 if (exchange_status === 'granted') {
                     return res.json({ status: 'ok' });
-                    // redirect the user to the user interface where we access the resource
-                    // res.status(303);
-                    // res.set('Location', `/resource?url=${encodeURIComponent(resource_uri)}`);
-                    // res.end();
-                    // return;
                 }
             } catch (err) {
                 console.error('httpGetWebauthzGrant: error', err);
                 res.status(403);
                 return res.json({ error: 'failed to process access request' });
-                // return res.render('main', { error: 'access denied', url: resource_uri, username: req.session.username });
             }
 
             return res.json({ status: 'finished' });
@@ -219,7 +205,6 @@ async function httpPostAdminLoginShieldWebauthzGrant(req, res) {
     } catch (err) {
         console.error('httpGetWebauthzGrant: failed to retrieve access request', err);
         res.status(400);
-        // return res.render('fault', { fault: 'invalid request' });
         return res.json({ error: 'failed to retrieve access request' });
     }
 }
